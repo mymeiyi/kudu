@@ -104,7 +104,7 @@ public class Example {
     System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
   }
 
-  private static void scanDorisTable(KuduClient client, String tableName) throws Exception {
+  private static void scanDorisTable(KuduClient client, String tableName, int printStep) throws Exception {
     KuduTable table = client.openTable(tableName);
     Schema schema = table.getSchema();
 
@@ -126,7 +126,9 @@ public class Example {
         String name = result.getString("username");
         String city = result.getString("city");
         int age = result.getInt("age");
-        System.out.println(String.format("id: %s, name: %s, city: %s, age: %s", id, name, city, age));
+        if (resultCount % printStep == 0) {
+          System.out.println(String.format("id: %s, name: %s, city: %s, age: %s", id, name, city, age));
+        }
         resultCount++;
       }
     }
@@ -302,10 +304,11 @@ public class Example {
 
     try {
       // testKudu(client, "java_example-" + System.currentTimeMillis());
-      String tableName = "usertable";
+      String tableName = System.getProperty("table", "usertable");
+      String printStep = System.getProperty("printStep", "100");
       // createDorisTable(client, tableName);
-      createDorisTable(client, tableName, 10);
-      // scanDorisTable(client, tableName);
+      // createDorisTable(client, tableName, 10);
+      scanDorisTable(client, tableName, Integer.parseInt(printStep));
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
