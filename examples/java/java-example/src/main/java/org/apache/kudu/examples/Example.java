@@ -77,6 +77,33 @@ public class Example {
     System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
   }
 
+  static void createDorisTable(KuduClient client, String tableName, int colNum)  throws KuduException {
+    // Set up a simple schema.
+    List<ColumnSchema> columns = new ArrayList<>();
+    for (int i = 0; i < colNum; i++) {
+      if (i == 0) {
+        columns.add(new ColumnSchema.ColumnSchemaBuilder("FIELD"+i, Type.STRING).key(true).build());
+      } else {
+        columns.add(new ColumnSchema.ColumnSchemaBuilder("FIELD"+i, Type.STRING).build());
+      }
+    }
+    Schema schema = new Schema(columns);
+    CreateTableOptions cto = new CreateTableOptions();
+    // hash partitions
+    List<String> hashKeys = new ArrayList<>(1);
+    hashKeys.add("FIELD0");
+    int numBuckets = 2;
+    cto.addHashPartitions(hashKeys, numBuckets);
+    // replicas
+    cto.setNumReplicas(1);
+
+    client.createTable(tableName, schema, cto);
+    System.out.println("Created table " + tableName);
+
+    boolean b = client.tableExists(tableName);
+    System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
+  }
+
   private static void scanDorisTable(KuduClient client, String tableName) throws Exception {
     KuduTable table = client.openTable(tableName);
     Schema schema = table.getSchema();
@@ -275,9 +302,10 @@ public class Example {
 
     try {
       // testKudu(client, "java_example-" + System.currentTimeMillis());
-      String tableName = "user";
+      String tableName = "usertable";
       // createDorisTable(client, tableName);
-      scanDorisTable(client, tableName);
+      createDorisTable(client, tableName, 10);
+      // scanDorisTable(client, tableName);
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
