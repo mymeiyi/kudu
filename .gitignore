@@ -47,6 +47,7 @@ nbproject/
 .project
 .cproject
 .csettings/
+cmake-build-debug/
 
 # WWW dependencies which are not checked in directly
 www/tracing.*

@@ -48,8 +48,69 @@ import org.apache.kudu.client.SessionConfiguration.FlushMode;
  */
 public class Example {
   private static final Double DEFAULT_DOUBLE = 12.345;
-  private static final String KUDU_MASTERS = System.getProperty("kuduMasters", "localhost:7051");
+  private static final String KUDU_MASTERS = "39.106.55.28:7051";//"127.0.0.1:7052";
+          // System.getProperty("kuduMasters", "localhost:7051,localhost:7151,localhost:7251");
 
+  // DOUBLE、FLOAT或BOOL类型的列不能作为主键
+  static void createDorisTable(KuduClient client, String tableName)  throws KuduException {
+    // Set up a simple schema.
+    List<ColumnSchema> columns = new ArrayList<>(3);
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("user_id", Type.INT32).key(true).build());
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("username", Type.STRING).nullable(true).build());
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("city", Type.STRING).nullable(true).build());
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("age", Type.INT32).nullable(true).build());
+    Schema schema = new Schema(columns);
+
+    CreateTableOptions cto = new CreateTableOptions();
+    // hash partitions
+    List<String> hashKeys = new ArrayList<>(1);
+    hashKeys.add("user_id");
+    int numBuckets = 2;
+    cto.addHashPartitions(hashKeys, numBuckets);
+    // replicas
+    cto.setNumReplicas(1);
+
+    client.createTable(tableName, schema, cto);
+    System.out.println("Created table " + tableName);
+
+    boolean b = client.tableExists(tableName);
+    System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
+  }
+
+  private static void scanDorisTable(KuduClient client, String tableName) throws Exception {
+    KuduTable table = client.openTable(tableName);
+    Schema schema = table.getSchema();
+
+    // Scan with a predicate on the 'key' column, returning the 'value' and "added" columns.
+    List<String> projectColumns = new ArrayList<>(2);
+    projectColumns.add("user_id");
+    projectColumns.add("username");
+    projectColumns.add("city");
+    projectColumns.add("age");
+    KuduScanner scanner = client.newScannerBuilder(table)
+            .setProjectedColumnNames(projectColumns)
+            .build();
+    int resultCount = 0;
+    while (scanner.hasMoreRows()) {
+      RowResultIterator results = scanner.nextRows();
+      while (results.hasNext()) {
+        RowResult result = results.next();
+        int id = result.getInt("user_id");
+        String name = result.getString("username");
+        String city = result.getString("city");
+        int age = result.getInt("age");
+        System.out.println(String.format("id: %s, name: %s, city: %s, age: %s", id, name, city, age));
+        resultCount++;
+      }
+    }
+    System.out.println("Scanned "+resultCount+" rows and checked the results");
+  }
+
+  /**
+   * key,value两列，key是主键
+   * key列做range, (-,100,200,+)
+   * key列做hash，分成8个
+   */
   static void createExampleTable(KuduClient client, String tableName)  throws KuduException {
     // Set up a simple schema.
     List<ColumnSchema> columns = new ArrayList<>(2);
@@ -68,6 +129,16 @@ public class Example {
     hashKeys.add("key");
     int numBuckets = 8;
     cto.addHashPartitions(hashKeys, numBuckets);
+    cto.setNumReplicas(1);
+
+    PartialRow row0 = new PartialRow(schema);
+    row0.addInt("key", 0);
+    PartialRow row1 = new PartialRow(schema);
+    row1.addInt("key", 100);
+    PartialRow row2 = new PartialRow(schema);
+    row2.addInt("key", 200);
+    cto.addRangePartition(row0, row1);
+    cto.addRangePartition(row1, row2);
 
     // Create the table.
     client.createTable(tableName, schema, cto);
@@ -175,18 +246,11 @@ public class Example {
     System.out.println("Scanned some rows and checked the results");
   }
 
-  public static void main(String[] args) {
-    System.out.println("-----------------------------------------------");
-    System.out.println("Will try to connect to Kudu master(s) at " + KUDU_MASTERS);
-    System.out.println("Run with -DkuduMasters=master-0:port,master-1:port,... to override.");
-    System.out.println("-----------------------------------------------");
-    String tableName = "java_example-" + System.currentTimeMillis();
-    KuduClient client = new KuduClient.KuduClientBuilder(KUDU_MASTERS).build();
-
+  private static void testKudu(KuduClient client, String tableName) {
     try {
       createExampleTable(client, tableName);
 
-      int numRows = 150;
+      int numRows = 200;
       insertRows(client, tableName, numRows);
 
       // Alter the table, adding a column with a default value.
@@ -199,10 +263,27 @@ public class Example {
       scanTableAndCheckResults(client, tableName, numRows);
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  public static void main(String[] args) {
+    System.out.println("-----------------------------------------------");
+    System.out.println("Will try to connect to Kudu master(s) at " + KUDU_MASTERS);
+    System.out.println("Run with -DkuduMasters=master-0:port,master-1:port,... to override.");
+    System.out.println("-----------------------------------------------");
+    KuduClient client = new KuduClient.KuduClientBuilder(KUDU_MASTERS).build();
+
+    try {
+      // testKudu(client, "java_example-" + System.currentTimeMillis());
+      String tableName = "user";
+      // createDorisTable(client, tableName);
+      scanDorisTable(client, tableName);
+    } catch (Exception e) {
+      e.printStackTrace();
     } finally {
       try {
-        client.deleteTable(tableName);
-        System.out.println("Deleted the table");
+        /*client.deleteTable(tableName);
+        System.out.println("Deleted the table");*/
       } catch (Exception e) {
         e.printStackTrace();
       } finally {
