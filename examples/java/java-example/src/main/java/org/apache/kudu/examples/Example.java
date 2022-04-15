@@ -122,13 +122,33 @@ public class Example {
       RowResultIterator results = scanner.nextRows();
       while (results.hasNext()) {
         RowResult result = results.next();
-        int id = result.getInt("user_id");
+        Schema columnProjection = result.getColumnProjection();
+        int columnCount = columnProjection.getColumnCount();
+        for (int i = 0; i < columnCount; i++) {
+          Type columnType = result.getColumnType(i);
+          Object value = null;
+          switch (columnType) {
+            case INT8:
+            case INT16:
+            case INT32:
+              value = result.getInt(i);
+              break;
+            case INT64:
+              value= result.getLong(i);
+              break;
+            case STRING:
+              value = result.getString(i);
+              break;
+            default:
+          }
+          if (resultCount % printStep == 0) {
+            System.out.println(String.format("rowId: %d, colId: %d, value: %s", resultCount, i, value));
+          }
+        }
+        /*int id = result.getInt("user_id");
         String name = result.getString("username");
         String city = result.getString("city");
-        int age = result.getInt("age");
-        if (resultCount % printStep == 0) {
-          System.out.println(String.format("id: %s, name: %s, city: %s, age: %s", id, name, city, age));
-        }
+        int age = result.getInt("age");*/
         resultCount++;
       }
     }
