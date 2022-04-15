@@ -110,12 +110,12 @@ public class Example {
 
     // Scan with a predicate on the 'key' column, returning the 'value' and "added" columns.
     List<String> projectColumns = new ArrayList<>(2);
-    projectColumns.add("user_id");
+    /*projectColumns.add("user_id");
     projectColumns.add("username");
     projectColumns.add("city");
-    projectColumns.add("age");
+    projectColumns.add("age");*/
     KuduScanner scanner = client.newScannerBuilder(table)
-            .setProjectedColumnNames(projectColumns)
+            //.setProjectedColumnNames(projectColumns)
             .build();
     int resultCount = 0;
     while (scanner.hasMoreRows()) {
