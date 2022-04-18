@@ -106,14 +106,6 @@ public class Example {
 
   private static void scanDorisTable(KuduClient client, String tableName, int printStep) throws Exception {
     KuduTable table = client.openTable(tableName);
-    Schema schema = table.getSchema();
-
-    // Scan with a predicate on the 'key' column, returning the 'value' and "added" columns.
-    List<String> projectColumns = new ArrayList<>(2);
-    /*projectColumns.add("user_id");
-    projectColumns.add("username");
-    projectColumns.add("city");
-    projectColumns.add("age");*/
     KuduScanner scanner = client.newScannerBuilder(table)
             //.setProjectedColumnNames(projectColumns)
             .build();
@@ -145,10 +137,6 @@ public class Example {
             System.out.println(String.format("rowId: %d, colId: %d, value: %s", resultCount, i, value));
           }
         }
-        /*int id = result.getInt("user_id");
-        String name = result.getString("username");
-        String city = result.getString("city");
-        int age = result.getInt("age");*/
         resultCount++;
       }
     }
