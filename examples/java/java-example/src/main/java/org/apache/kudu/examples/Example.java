@@ -19,6 +19,7 @@ package org.apache.kudu.examples;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Schema;
@@ -123,6 +124,7 @@ public class Example {
             row);
     KuduScanner scanner = client.newScannerBuilder(table)
             .addPredicate(lowerPred)
+            .setProjectedColumnNames(table.getSchema().getColumns().stream().map(c -> c.getName()).collect(Collectors.toList()))
             .limit(1)
             // .addPredicate(upperPred)
             .build();
