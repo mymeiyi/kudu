@@ -48,8 +48,7 @@ import org.apache.kudu.client.SessionConfiguration.FlushMode;
  */
 public class Example {
   private static final Double DEFAULT_DOUBLE = 12.345;
-  private static final String KUDU_MASTERS = "127.0.0.1:7052";
-          // System.getProperty("kuduMasters", "localhost:7051,localhost:7151,localhost:7251");
+  private static final String KUDU_MASTERS =  System.getProperty("kuduMasters", "127.0.0.1:7052");
 
   // DOUBLE、FLOAT或BOOL类型的列不能作为主键
   static void createDorisTable(KuduClient client, String tableName)  throws KuduException {
