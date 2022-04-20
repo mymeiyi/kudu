@@ -122,8 +122,11 @@ public class Example {
             schema.getColumn("YCSB_KEY"),
             ComparisonOp.LESS_EQUAL,
             row);
+    PartialRow partialRow = new PartialRow(schema);
+    partialRow.addString("YCSB_KEY", row);
     KuduScanner scanner = client.newScannerBuilder(table)
-            .addPredicate(lowerPred)
+            //.addPredicate(lowerPred)
+            .lowerBound(partialRow)
             .setProjectedColumnNames(table.getSchema().getColumns().stream().map(c -> c.getName()).collect(Collectors.toList()))
             .limit(1)
             // .addPredicate(upperPred)
