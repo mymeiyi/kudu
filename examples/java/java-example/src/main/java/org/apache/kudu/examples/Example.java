@@ -123,7 +123,8 @@ public class Example {
             row);
     KuduScanner scanner = client.newScannerBuilder(table)
             .addPredicate(lowerPred)
-            .addPredicate(upperPred)
+            .limit(1)
+            // .addPredicate(upperPred)
             .build();
     int resultCount = 0;
     while (scanner.hasMoreRows()) {
