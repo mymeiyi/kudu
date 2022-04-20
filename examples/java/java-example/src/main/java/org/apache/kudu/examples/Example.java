@@ -374,7 +374,7 @@ public class Example {
       // deleteKuduTables(client, "usertable14");
       // truncateKuduTables(client, "usertable21");
       if (args.length > 0) {
-        String arg = args[1];
+        String arg = args[0];
         System.out.println(arg);
         if (arg.equals("get")) {
           getDorisTable(client, tableName, row);
