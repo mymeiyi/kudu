@@ -48,7 +48,7 @@ import org.apache.kudu.client.SessionConfiguration.FlushMode;
  */
 public class Example {
   private static final Double DEFAULT_DOUBLE = 12.345;
-  private static final String KUDU_MASTERS = "127.0.0.1:7051";
+  private static final String KUDU_MASTERS = "127.0.0.1:7052";
           // System.getProperty("kuduMasters", "localhost:7051,localhost:7151,localhost:7251");
 
   // DOUBLE、FLOAT或BOOL类型的列不能作为主键
@@ -372,11 +372,14 @@ public class Example {
       // createDorisTable(client, tableName);
       // createDorisTable(client, tableName, 10);
       // deleteKuduTables(client, "usertable14");
-      // truncateKuduTables(client, "usertable21");
+      /*truncateKuduTables(client, "usertable21");
+      if (true) {
+        return;
+      }*/
       if (args.length > 0) {
         String arg = args[0];
-        System.out.println(arg);
         if (arg.equals("get")) {
+          System.out.println("row: "+row);
           getDorisTable(client, tableName, row);
         } else if (arg.equals("scan")) {
           scanDorisTable(client, tableName, Integer.parseInt(printStep));
