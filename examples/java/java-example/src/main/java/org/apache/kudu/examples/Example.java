@@ -77,22 +77,29 @@ public class Example {
     System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
   }
 
+  static void deleteKuduTables(KuduClient client, String tableName)  throws KuduException {
+    client.deleteTable(tableName);
+  }
+
+  static void truncateKuduTables(KuduClient client, String tableName)  throws KuduException {
+    client.deleteTable(tableName);
+    System.out.println("Deleted table "+tableName);
+    createDorisTable(client, tableName, 10);
+  }
+
   static void createDorisTable(KuduClient client, String tableName, int colNum)  throws KuduException {
     // Set up a simple schema.
     List<ColumnSchema> columns = new ArrayList<>();
+    columns.add(new ColumnSchema.ColumnSchemaBuilder("YCSB_KEY", Type.STRING).key(true).build());
     for (int i = 0; i < colNum; i++) {
-      if (i == 0) {
-        columns.add(new ColumnSchema.ColumnSchemaBuilder("FIELD"+i, Type.STRING).key(true).build());
-      } else {
-        columns.add(new ColumnSchema.ColumnSchemaBuilder("FIELD"+i, Type.STRING).build());
-      }
+      columns.add(new ColumnSchema.ColumnSchemaBuilder("field" + i, Type.STRING).build());
     }
     Schema schema = new Schema(columns);
     CreateTableOptions cto = new CreateTableOptions();
     // hash partitions
     List<String> hashKeys = new ArrayList<>(1);
-    hashKeys.add("FIELD0");
-    int numBuckets = 2;
+    hashKeys.add("YCSB_KEY");
+    int numBuckets = 4;
     cto.addHashPartitions(hashKeys, numBuckets);
     // replicas
     cto.setNumReplicas(1);
@@ -102,6 +109,53 @@ public class Example {
 
     boolean b = client.tableExists(tableName);
     System.out.println("table: " + tableName + (b ? " exist" : " not exits"));
+  }
+
+  private static void getDorisTable(KuduClient client, String tableName, String row) throws Exception {
+    KuduTable table = client.openTable(tableName);
+    Schema schema = table.getSchema();
+    KuduPredicate lowerPred = KuduPredicate.newComparisonPredicate(
+            schema.getColumn("YCSB_KEY"),
+            ComparisonOp.GREATER_EQUAL,
+            row);
+    KuduPredicate upperPred = KuduPredicate.newComparisonPredicate(
+            schema.getColumn("YCSB_KEY"),
+            ComparisonOp.LESS_EQUAL,
+            row);
+    KuduScanner scanner = client.newScannerBuilder(table)
+            .addPredicate(lowerPred)
+            .addPredicate(upperPred)
+            .build();
+    int resultCount = 0;
+    while (scanner.hasMoreRows()) {
+      RowResultIterator results = scanner.nextRows();
+      while (results.hasNext()) {
+        RowResult result = results.next();
+        Schema columnProjection = result.getColumnProjection();
+        int columnCount = columnProjection.getColumnCount();
+        for (int i = 0; i < columnCount; i++) {
+          Type columnType = result.getColumnType(i);
+          Object value = null;
+          switch (columnType) {
+            case INT8:
+            case INT16:
+            case INT32:
+              value = result.getInt(i);
+              break;
+            case INT64:
+              value= result.getLong(i);
+              break;
+            case STRING:
+              value = result.getString(i);
+              break;
+            default:
+          }
+          System.out.println(String.format("rowId: %d, colId: %d, value: %s", resultCount, i, value));
+        }
+        resultCount++;
+      }
+    }
+    System.out.println("Get "+resultCount+" rows");
   }
 
   private static void scanDorisTable(KuduClient client, String tableName, int printStep) throws Exception {
@@ -312,11 +366,24 @@ public class Example {
 
     try {
       // testKudu(client, "java_example-" + System.currentTimeMillis());
-      String tableName = System.getProperty("table", "usertable");
+      String tableName = System.getProperty("table", "usertable21");
       String printStep = System.getProperty("printStep", "100");
+      String row = System.getProperty("row", "");
       // createDorisTable(client, tableName);
       // createDorisTable(client, tableName, 10);
-      scanDorisTable(client, tableName, Integer.parseInt(printStep));
+      // deleteKuduTables(client, "usertable14");
+      // truncateKuduTables(client, "usertable21");
+      if (args.length > 0) {
+        String arg = args[1];
+        System.out.println(arg);
+        if (arg.equals("get")) {
+          getDorisTable(client, tableName, row);
+        } else if (arg.equals("scan")) {
+          scanDorisTable(client, tableName, Integer.parseInt(printStep));
+        }
+      } else {
+        scanDorisTable(client, tableName, Integer.parseInt(printStep));
+      }
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
